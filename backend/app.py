@@ -1,14 +1,18 @@
 from flask import Flask, jsonify
 from flask_cors import CORS
+import sys
+import os
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 from log_parser import load_logs, generate_sample_logs
 from detector import detect_threats
-import os
 
 app = Flask(__name__)
 CORS(app)
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-LOG_PATH = os.path.join(BASE_DIR, 'logs', 'sample.log')
+LOG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'logs', 'sample.log')
+LOG_PATH = os.path.normpath(LOG_PATH)
 
 @app.route('/api/threats', methods=['GET'])
 def get_threats():
@@ -41,4 +45,4 @@ def get_summary():
     })
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    app.run(host='0.0.0.0', debug=True, port=5000)
