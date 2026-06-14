@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Threat Detection Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #0a0e1a; color: #e0e0e0; font-family: 'Segoe UI', sans-serif; }
+        header { background: #0d1b2a; padding: 20px 40px; border-bottom: 1px solid #1e3a5f; display: flex; align-items: center; gap: 15px; }
+        header h1 { font-size: 22px; color: #00d4ff; }
+        header span { background: #00d4ff22; color: #00d4ff; padding: 4px 12px; border-radius: 20px; font-size: 12px; border: 1px solid #00d4ff55; }
+        .summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; padding: 30px 40px; }
+        .card { background: #0d1b2a; border: 1px solid #1e3a5f; border-radius: 12px; padding: 20px; }
+        .card h3 { font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+        .card .number { font-size: 36px; font-weight: bold; }
+        .card.threat .number { color: #ff4757; }
+        .card.clean .number { color: #2ed573; }
+        .card.total .number { color: #00d4ff; }
+        .card.percent .number { color: #ffa502; }
+        .section { padding: 0 40px 40px; }
+        .section h2 { font-size: 16px; color: #00d4ff; margin-bottom: 15px; border-left: 3px solid #00d4ff; padding-left: 10px; }
+        table { width: 100%; border-collapse: collapse; background: #0d1b2a; border-radius: 12px; overflow: hidden; }
+        th { background: #1e3a5f; padding: 12px 16px; text-align: left; font-size: 12px; text-transform: uppercase; color: #888; }
+        td { padding: 12px 16px; border-bottom: 1px solid #1a2a3a; font-size: 14px; }
+        tr:last-child td { border-bottom: none; }
+        .badge { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: bold; }
+        .badge.threat { background: #ff475722; color: #ff4757; border: 1px solid #ff475555; }
+        .badge.clean { background: #2ed57322; color: #2ed573; border: 1px solid #2ed57355; }
+        .reason-tag { background: #ffa50222; color: #ffa502; border: 1px solid #ffa50255; padding: 2px 8px; border-radius: 10px; font-size: 11px; margin-right: 5px; }
+        .refresh-btn { background: #00d4ff22; color: #00d4ff; border: 1px solid #00d4ff55; padding: 8px 20px; border-radius: 8px; cursor: pointer; font-size: 13px; margin-left: auto; }
+        .refresh-btn:hover { background: #00d4ff44; }
+        .live-dot { width: 8px; height: 8px; background: #2ed573; border-radius: 50%; display: inline-block; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+    </style>
+</head>
+<body>
+    <header>
+        <span class="live-dot"></span>
+        <h1>Threat Detection Dashboard</h1>
+        <span>LIVE</span>
+        <button class="refresh-btn" onclick="loadData()">Refresh</button>
+    </header>
+
+    <div class="summary">
+        <div class="card total"><h3>Total IPs Monitored</h3><div class="number" id="total">-</div></div>
+        <div class="card threat"><h3>Threats Detected</h3><div class="number" id="threats">-</div></div>
+        <div class="card clean"><h3>Clean IPs</h3><div class="number" id="clean">-</div></div>
+        <div class="card percent"><h3>Threat Rate</h3><div class="number" id="percent">-%</div></div>
+    </div>
+
+    <div class="section">
+        <h2>IP Threat Analysis</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>IP Address</th>
+                    <th>Status</th>
+                    <th>Total Requests</th>
+                    <th>Failed Logins</th>
+                    <th>Reasons</th>
+                </tr>
+            </thead>
+            <tbody id="threat-table"></tbody>
+        </table>
+    </div>
+
+    <script>
+        async function loadData() {
+            const summaryRes = await fetch('http://127.0.0.1:5000/api/summary');
+            const summary = await summaryRes.json();
+            document.getElementById('total').textContent = summary.total_ips;
+            document.getElementById('threats').textContent = summary.threats_detected;
+            document.getElementById('clean').textContent = summary.clean_ips;
+            document.getElementById('percent').textContent = summary.threat_percentage + '%';
+
+            const threatRes = await fetch('http://127.0.0.1:5000/api/threats');
+            const threats = await threatRes.json();
+            const tbody = document.getElementById('threat-table');
+            tbody.innerHTML = '';
+            threats.forEach(t => {
+                const reasons = t.reasons.length > 0
+                    ? t.reasons.map(r => `<span class="reason-tag">${r}</span>`).join('')
+                    : '<span style="color:#555">None</span>';
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${t.ip}</td>
+                        <td><span class="badge ${t.threat_detected ? 'threat' : 'clean'}">${t.threat_detected ? 'THREAT' : 'CLEAN'}</span></td>
+                        <td>${t.total_requests}</td>
+                        <td>${t.failed_logins}</td>
+                        <td>${reasons}</td>
+                    </tr>`;
+            });
+        }
+
+        loadData();
+        setInterval(loadData, 10000);
+    </script>
+</body>
+</html>
